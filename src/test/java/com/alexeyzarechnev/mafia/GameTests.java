@@ -32,6 +32,12 @@ public class GameTests {
         public void sleep() {
             ++sleepCount;
         }
+
+        @Override
+        public void getMessage(String message) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'getMessage'");
+        }
     }
 
     public static class TestHost implements Host {
@@ -51,6 +57,12 @@ public class GameTests {
                 default -> result = voted;
             }
             return result;
+        }
+
+        @Override
+        public void getMessage(String message) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'getMessage'");
         }
     }
 
