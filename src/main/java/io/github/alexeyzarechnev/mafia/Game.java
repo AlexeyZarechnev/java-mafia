@@ -31,6 +31,12 @@ public class Game {
         Citizen::new
     );
 
+    private static final List<Class<? extends Role>> awakeOrder = List.of(
+        Mafia.class,
+        Policeman.class,
+        Doctor.class
+    ); 
+
     public Game(List<Player> players) {
         if (players.size() < 5) 
             throw new IllegalArgumentException("Not enough players, expected at least 5, but got " + players.size());
@@ -57,7 +63,26 @@ public class Game {
     public void playNight() throws IncorrectGameTimeException {
         if (isDay)
             throw new IncorrectGameTimeException(isDay);
+        
     }
+
+    private void sleep(Class<? extends Role> role) { 
+        aliveMembers.forEach(member -> {
+            if (member.getClass().equals(role))
+                member.sleep();
+            }); 
+    }
+
+    private void awake(Class<? extends Role> role) {
+        aliveMembers.forEach(member -> {
+            if (member.getClass().equals(role))
+                member.awake();
+            }); 
+    }
+
+    private void massiveSleep() { aliveMembers.forEach(member -> member.sleep()); }
+
+    private void massiveAwake() { aliveMembers.forEach(member -> member.awake()); }
 
     public boolean isEnd() { return false; }
 

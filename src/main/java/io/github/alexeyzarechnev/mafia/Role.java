@@ -6,4 +6,8 @@ public abstract class Role {
     protected Role(Player player) {
         this.player = player;
     }
+
+    public void sleep() { player.sleep(); }
+
+    public void awake() { player.awake(); }
 }
