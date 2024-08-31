@@ -9,4 +9,7 @@ public class Mafia extends Role {
         super(player);
     }
 
+    @Override
+    public boolean isBlack() { return true; }
+
 }

@@ -9,4 +9,7 @@ public class Doctor extends Role {
         super(player);
     }
 
+    @Override
+    public boolean isBlack() { return false; }
+
 }

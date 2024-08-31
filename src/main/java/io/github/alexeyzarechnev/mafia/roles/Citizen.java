@@ -10,4 +10,7 @@ public class Citizen extends Role {
         //TODO Auto-generated constructor stub
     }
 
+    @Override
+    public boolean isBlack() { return false; }
+
 }
