@@ -3,3 +3,6 @@ target/
 
 # IDE files
 .vscode/
+
+# Drawio files
+diagram/architecture.drawio
