@@ -59,5 +59,11 @@ public class Game {
             throw new IncorrectGameTimeException(isDay);
     }
 
+    public boolean isEnd() { return false; }
+
+    private void endGame() {}
+
+    public int remainedMembers() { return aliveMembers.size(); }
+
 
 }
