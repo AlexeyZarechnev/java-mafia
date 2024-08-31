@@ -3,8 +3,11 @@ package io.github.alexeyzarechnev.mafia;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 import io.github.alexeyzarechnev.mafia.roles.*;
 import io.github.alexeyzarechnev.mafia.roles.exceptions.IncorrectGameTimeException;
@@ -19,6 +22,7 @@ public class Game {
     private List<Player> allPlayers;
     private List<Role> aliveMembers;
     private boolean isDay;
+    private Set<Player> injuredPlayers;
 
     private static final List<RoleFactory> roles = List.of(
         Doctor::new,
@@ -53,6 +57,7 @@ public class Game {
         
         this.allPlayers = players;
         this.aliveMembers = new ArrayList<>(players.size());
+        this.injuredPlayers = new HashSet<>();
     }
 
     private void giveRoles() {
@@ -103,6 +108,12 @@ public class Game {
         if (isDay)
             throw new IncorrectGameTimeException(isDay);
         
+        massiveSleep();
+        for (Class<? extends Role> role : awakeOrder) {
+            awake(role);
+            aliveMembers.forEach(member -> member.action(this));
+            sleep(role);
+        }
     }
 
     private void sleep(Class<? extends Role> role) { 
@@ -133,7 +144,6 @@ public class Game {
         for (Role member : aliveMembers)
             if (member.isBlack())
                 blackCount++;
-        System.out.println("Black count: " + blackCount);
         return blackCount * 2 >= aliveMembers.size() || blackCount == 0;
     }
 
@@ -153,5 +163,24 @@ public class Game {
      */
     public List<Player> getAlivePlayers() { return aliveMembers.stream().map(Role::getPlayer).toList(); }
 
+
+    
+    // Exclusive role methods
+
+    public void injure(Player player, Mafia.Weapon weapon) { 
+        Objects.requireNonNull(weapon);
+        injuredPlayers.add(player); 
+    }
+
+    public boolean check(Player player, Policeman.Archive archive) { 
+        Objects.requireNonNull(archive);
+        return aliveMembers.stream().anyMatch(member -> member.getPlayer().equals(player) && member.isBlack());
+    } 
+
+    public void heal(Player player, Doctor.Medicine medicine) { 
+        Objects.requireNonNull(medicine);
+        injuredPlayers.remove(player); 
+    }
+     
 
 }

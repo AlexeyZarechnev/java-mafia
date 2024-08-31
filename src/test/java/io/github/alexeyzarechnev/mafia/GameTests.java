@@ -1,6 +1,7 @@
 package io.github.alexeyzarechnev.mafia;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -11,13 +12,15 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.alexeyzarechnev.mafia.roles.Citizen;
 import io.github.alexeyzarechnev.mafia.roles.Mafia;
+import io.github.alexeyzarechnev.mafia.roles.exceptions.IncorrectGameTimeException;
 
 public class GameTests {
 
     private static class TestPlayer implements Player {
 
-        public Player vote;
+        public Player vote = null;
         public int sleepCount = 0;
         public int awakeCount = 0;
 
@@ -48,13 +51,13 @@ public class GameTests {
             players.add(new TestPlayer());
         
         game = new Game(players);
+        game.start();
         return players;
     }
 
     @Test
     public void isEndTest() {
         init(5);
-        game.start();
         assertFalse(game.isEnd());
         try {
             Field field = game.getClass().getDeclaredField("aliveMembers");
@@ -66,11 +69,88 @@ public class GameTests {
                 if (member.getClass().equals(Mafia.class))
                     newMembers.remove(member);
             }
-            System.out.println(newMembers);
             field.set(game, newMembers);
         } catch (NoSuchFieldException | IllegalAccessException e) {
             e.printStackTrace();
         }
         assertTrue(game.isEnd());
+    }
+
+    @Test
+    public void nightWithoutKillTest() {
+        init(5);
+        assertDoesNotThrow(() -> game.playNight());
+        assertEquals(5, game.remainedMembers());
+    }
+
+
+    @Test
+    public void nightWithKillTest() {
+        init(5);
+        assertDoesNotThrow(() -> game.playNight());
+        assertEquals(4, game.remainedMembers());
+    }
+
+    @Test
+    public void doubleNightTest() {
+        init(5);
+        assertDoesNotThrow(() -> game.playNight());
+        assertThrows(IncorrectGameTimeException.class, () -> game.playNight());
+    }
+
+    @Test
+    public void countTest() {
+        init(5);
+        assertDoesNotThrow(() -> game.playNight());
+        try {
+            Field field = game.getClass().getDeclaredField("aliveMembers");
+            field.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            List<Role> members = List.copyOf((List<Role>) field.get(game));
+            for (Role member : members) {
+                if (member.getClass().equals(Citizen.class)) {
+                    assertEquals(1, ((TestPlayer) member.getPlayer()).sleepCount);
+                    assertEquals(1, ((TestPlayer) member.getPlayer()).awakeCount);
+                } else {
+                    assertEquals(2, ((TestPlayer) member.getPlayer()).sleepCount);
+                    assertEquals(2, ((TestPlayer) member.getPlayer()).awakeCount);
+                }
+            }
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void setDay() {
+        try {
+            Field field = game.getClass().getDeclaredField("isDay");
+            field.setAccessible(true);
+            field.set(game, true);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void dayWithoutVoteTest() {
+        init(5);
+        setDay();
+        assertDoesNotThrow(() -> game.playDay());
+        assertEquals(5, game.remainedMembers());
+    }
+
+    @Test 
+    public void dayWithVoteTest() {
+        List<Player> players = init(5);
+        setDay();
+        players.forEach(player -> ((TestPlayer) player).vote = players.get(0));
+        assertDoesNotThrow(() -> game.playDay());
+        assertEquals(4, game.remainedMembers());
+    }
+
+    @Test
+    public void invalidDayTest() {
+        init(5);
+        assertThrows(IncorrectGameTimeException.class, () -> game.playDay());
     }
 }

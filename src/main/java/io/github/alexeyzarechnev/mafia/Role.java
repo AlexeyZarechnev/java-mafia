@@ -15,5 +15,7 @@ public abstract class Role {
 
     public Player getPlayer() { return player; }
 
+    public abstract void action(Game game);
+
     public abstract boolean isBlack(); 
 }
