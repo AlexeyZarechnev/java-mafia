@@ -12,9 +12,9 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.alexeyzarechnev.mafia.exceptions.IncorrectGameTimeException;
 import io.github.alexeyzarechnev.mafia.roles.Citizen;
 import io.github.alexeyzarechnev.mafia.roles.Mafia;
-import io.github.alexeyzarechnev.mafia.roles.exceptions.IncorrectGameTimeException;
 
 public class GameTests {
 
@@ -86,9 +86,54 @@ public class GameTests {
 
     @Test
     public void nightWithKillTest() {
-        init(5);
+        List<Player> players = init(5);
+        players.forEach(player -> ((TestPlayer) player).vote = players.get(0));
         assertDoesNotThrow(() -> game.playNight());
         assertEquals(4, game.remainedMembers());
+    }
+
+    @Test
+    public void differentMafiaVotesTest() {
+        init(9);
+        try {
+            Field field = game.getClass().getDeclaredField("aliveMembers");
+            field.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            List<Role> members = List.copyOf((List<Role>) field.get(game));
+            int i = 0;
+            for (Role member : members) {
+                if (member.getClass().equals(Mafia.class)) {
+                    ((TestPlayer) member.getPlayer()).vote = members.get(i < 2 ? 0 : 1).getPlayer();
+                    ++i;
+                }
+            }
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            e.printStackTrace();
+        }
+        assertDoesNotThrow(() -> game.playNight());
+        assertEquals(8, game.remainedMembers());
+    }
+
+    @Test
+    public void drawMafiaVotesTest() {
+        init(6);
+        try {
+            Field field = game.getClass().getDeclaredField("aliveMembers");
+            field.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            List<Role> members = List.copyOf((List<Role>) field.get(game));
+            int i = 0;
+            for (Role member : members) {
+                if (member.getClass().equals(Mafia.class)) {
+                    ((TestPlayer) member.getPlayer()).vote = members.get(i < 1 ? 0 : 1).getPlayer();
+                    ++i;
+                }
+            }
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            e.printStackTrace();
+        }
+        assertDoesNotThrow(() -> game.playNight());
+        assertEquals(6, game.remainedMembers());
     }
 
     @Test

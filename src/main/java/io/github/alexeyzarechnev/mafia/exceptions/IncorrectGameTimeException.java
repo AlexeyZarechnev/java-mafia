@@ -1,4 +1,4 @@
-package io.github.alexeyzarechnev.mafia.roles.exceptions;
+package io.github.alexeyzarechnev.mafia.exceptions;
 
 public class IncorrectGameTimeException extends Exception {
     

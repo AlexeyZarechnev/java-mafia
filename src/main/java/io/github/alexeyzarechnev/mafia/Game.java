@@ -9,8 +9,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import io.github.alexeyzarechnev.mafia.exceptions.IncorrectGameTimeException;
 import io.github.alexeyzarechnev.mafia.roles.*;
-import io.github.alexeyzarechnev.mafia.roles.exceptions.IncorrectGameTimeException;
 
 public class Game {
 
@@ -89,7 +89,9 @@ public class Game {
             Player vote = member.vote();
             votes.put(vote, votes.getOrDefault(vote, 0) + 1);
         });
+        //TODO: переголосование, если у нескольких игроков одинаковое количество голосов
         kick(votes.entrySet().stream().max(Map.Entry.comparingByValue()).get().getKey());
+
 
         if (isEnd())
             endGame();
@@ -107,13 +109,7 @@ public class Game {
     public void playNight() throws IncorrectGameTimeException {
         if (isDay)
             throw new IncorrectGameTimeException(isDay);
-        
-        massiveSleep();
-        for (Class<? extends Role> role : awakeOrder) {
-            awake(role);
-            aliveMembers.forEach(member -> member.action(this));
-            sleep(role);
-        }
+        //TODO: реализовать метод, чтобы проходили все тесты (чтобы было с чем сравнить написал playDay)
     }
 
     private void sleep(Class<? extends Role> role) { 
@@ -130,9 +126,9 @@ public class Game {
             }); 
     }
 
-    private void massiveSleep() { aliveMembers.forEach(member -> member.sleep()); }
+    private void massiveSleep() { /*TODO: реализовать метод усыпления всех сразу */ }
 
-    private void massiveAwake() { aliveMembers.forEach(member -> member.awake()); }
+    private void massiveAwake() { /*TODO: реализовать метод просыпания всех сразу */ }
 
     /**
      * Checks if the game has ended.
@@ -147,7 +143,7 @@ public class Game {
         return blackCount * 2 >= aliveMembers.size() || blackCount == 0;
     }
 
-    private void endGame() {}
+    private void endGame() { /*TODO: реализовать метод конца игры на твой вкус, для примера он может поздравлять победителей и не поздравлять проигравших */ }
 
     /**
      * Returns the number of remaining members in the game.
@@ -167,16 +163,41 @@ public class Game {
     
     // Exclusive role methods
 
+    /**
+     * !! Exclusive method for the MAFIA role !!
+     * Injures the specified player using the given weapon.
+     *
+     * @param player the player to be injured
+     * @param weapon the weapon used to injure the player
+     * @throws NullPointerException if the weapon is null
+     */
     public void injure(Player player, Mafia.Weapon weapon) { 
         Objects.requireNonNull(weapon);
         injuredPlayers.add(player); 
     }
 
+    /**
+     * !! Exclusive method for the POLICEMAN role !!
+     * Checks if a player is Black or not.
+     *
+     * @param player the player to check
+     * @param archive the archive to search in
+     * @return true if the player is present in the archive and is marked as black, false otherwise
+     * @throws NullPointerException if the archive is null
+     */
     public boolean check(Player player, Policeman.Archive archive) { 
         Objects.requireNonNull(archive);
         return aliveMembers.stream().anyMatch(member -> member.getPlayer().equals(player) && member.isBlack());
     } 
 
+    /**
+     * !! Exclusive method for the DOCTOR role !!
+     * Heals the specified player using the given medicine.
+     *
+     * @param player the player to heal
+     * @param medicine the medicine to use for healing
+     * @throws NullPointerException if the medicine is null
+     */
     public void heal(Player player, Doctor.Medicine medicine) { 
         Objects.requireNonNull(medicine);
         injuredPlayers.remove(player); 
