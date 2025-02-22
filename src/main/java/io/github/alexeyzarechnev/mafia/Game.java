@@ -2,14 +2,16 @@ package io.github.alexeyzarechnev.mafia;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
+import java.util.function.BiFunction;
+
+import static java.util.Map.entry;
 
 import io.github.alexeyzarechnev.mafia.exceptions.IncorrectGameTimeException;
+import io.github.alexeyzarechnev.mafia.mechanics.Vote;
 import io.github.alexeyzarechnev.mafia.roles.*;
 
 public class Game {
@@ -19,10 +21,10 @@ public class Game {
         Role create(Player player);
     }
 
-    private List<Player> allPlayers;
-    private List<Role> aliveMembers;
+    private final List<Player> allPlayers;
+    private final List<Role> aliveMembers;
     private boolean isDay;
-    private Set<Player> injuredPlayers;
+    private final Set<Player> injuredPlayers;
 
     private static final List<RoleFactory> roles = List.of(
         Doctor::new,
@@ -38,10 +40,10 @@ public class Game {
         Citizen::new
     );
 
-    private static final List<Class<? extends Role>> awakeOrder = List.of(
-        Mafia.class,
-        Policeman.class,
-        Doctor.class
+    private static final Map<Class<? extends Role>, BiFunction<Game, Player, Boolean>> nightActions = Map.ofEntries(
+        entry(Mafia.class, Game::injure),
+        entry(Policeman.class, Game::check),
+        entry(Doctor.class, Game::heal)
     ); 
 
 
@@ -83,15 +85,9 @@ public class Game {
     public void playDay() throws IncorrectGameTimeException {
         if (!isDay)
             throw new IncorrectGameTimeException(isDay);
-        
-        Map<Player, Integer> votes = new HashMap<>();
-        aliveMembers.forEach(member -> {
-            Player vote = member.vote();
-            votes.put(vote, votes.getOrDefault(vote, 0) + 1);
-        });
-        //TODO: переголосование, если у нескольких игроков одинаковое количество голосов
-        kick(votes.entrySet().stream().max(Map.Entry.comparingByValue()).get().getKey());
 
+        Vote vote = new Vote(aliveMembers.stream().map(Role::getPlayer).toList(), aliveMembers.stream().map(Role::getPlayer).toList());
+        kick(vote.getResult());
 
         if (isEnd())
             endGame();
@@ -109,9 +105,32 @@ public class Game {
     public void playNight() throws IncorrectGameTimeException {
         if (isDay)
             throw new IncorrectGameTimeException(isDay);
-        //TODO: реализовать метод, чтобы проходили все тесты (чтобы было с чем сравнить написал playDay)
+
+        massiveSleep();
+        
+        nightActions.entrySet().forEach(role -> {
+            final List<Role> awakens = new ArrayList<>();
+            aliveMembers.forEach(member -> {
+                if (member.getClass().equals(role.getKey())) {
+                    member.awake();
+                    awakens.add(member);
+                }
+            });
+            Vote vote = new Vote(awakens.stream().map(Role::getPlayer).toList(), aliveMembers.stream().filter(awakens::contains).map(Role::getPlayer).toList());
+            role.getValue().apply(this, vote.getResult());
+            awakens.forEach(Role::sleep);
+        });
+        injuredPlayers.forEach(this::kick);
+        injuredPlayers.clear();
+        massiveAwake();
+
+        if (isEnd())
+            endGame();
+
+        isDay = true;
     }
 
+    @SuppressWarnings("unused")
     private void sleep(Class<? extends Role> role) { 
         aliveMembers.forEach(member -> {
             if (member.getClass().equals(role))
@@ -119,6 +138,7 @@ public class Game {
             }); 
     }
 
+    @SuppressWarnings("unused")
     private void awake(Class<? extends Role> role) {
         aliveMembers.forEach(member -> {
             if (member.getClass().equals(role))
@@ -126,9 +146,11 @@ public class Game {
             }); 
     }
 
-    private void massiveSleep() { /*TODO: реализовать метод усыпления всех сразу */ }
+    @SuppressWarnings("unused")
+    private void massiveSleep() { aliveMembers.forEach(Role::sleep); }
 
-    private void massiveAwake() { /*TODO: реализовать метод просыпания всех сразу */ }
+    @SuppressWarnings("unused")
+    private void massiveAwake() { aliveMembers.forEach(Role::awake); }
 
     /**
      * Checks if the game has ended.
@@ -143,7 +165,15 @@ public class Game {
         return blackCount * 2 >= aliveMembers.size() || blackCount == 0;
     }
 
-    private void endGame() { /*TODO: реализовать метод конца игры на твой вкус, для примера он может поздравлять победителей и не поздравлять проигравших */ }
+    private void endGame() { 
+        int blackCount = 0;
+        for (Role member : aliveMembers)
+            if (member.isBlack())
+                blackCount++;
+        for (Role member : aliveMembers)
+            if (member.isBlack())
+                member.win(blackCount > 0 ? member.isBlack() : !member.isBlack());
+    }
 
     /**
      * Returns the number of remaining members in the game.
@@ -159,21 +189,19 @@ public class Game {
      */
     public List<Player> getAlivePlayers() { return aliveMembers.stream().map(Role::getPlayer).toList(); }
 
-
     
-    // Exclusive role methods
+    // action methods
 
     /**
      * !! Exclusive method for the MAFIA role !!
      * Injures the specified player using the given weapon.
      *
      * @param player the player to be injured
-     * @param weapon the weapon used to injure the player
      * @throws NullPointerException if the weapon is null
      */
-    public void injure(Player player, Mafia.Weapon weapon) { 
-        Objects.requireNonNull(weapon);
+    public boolean injure(Player player) { 
         injuredPlayers.add(player); 
+        return true;
     }
 
     /**
@@ -181,12 +209,10 @@ public class Game {
      * Checks if a player is Black or not.
      *
      * @param player the player to check
-     * @param archive the archive to search in
      * @return true if the player is present in the archive and is marked as black, false otherwise
      * @throws NullPointerException if the archive is null
      */
-    public boolean check(Player player, Policeman.Archive archive) { 
-        Objects.requireNonNull(archive);
+    public boolean check(Player player) { 
         return aliveMembers.stream().anyMatch(member -> member.getPlayer().equals(player) && member.isBlack());
     } 
 
@@ -195,12 +221,10 @@ public class Game {
      * Heals the specified player using the given medicine.
      *
      * @param player the player to heal
-     * @param medicine the medicine to use for healing
      * @throws NullPointerException if the medicine is null
      */
-    public void heal(Player player, Doctor.Medicine medicine) { 
-        Objects.requireNonNull(medicine);
-        injuredPlayers.remove(player); 
+    public boolean heal(Player player) {
+        return injuredPlayers.remove(player);
     }
      
 

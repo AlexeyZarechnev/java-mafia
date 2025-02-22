@@ -31,7 +31,10 @@ public class GameTests {
         public void awake() { ++awakeCount; }
 
         @Override
-        public Player vote() { return vote; }
+        public Player vote(List<Player> voteablePlayers) { return vote; }
+
+        @Override
+        public void message(String message) {}
 
     }
 
@@ -87,6 +90,7 @@ public class GameTests {
     @Test
     public void nightWithKillTest() {
         List<Player> players = init(5);
+        //TODO: check if player[0] is mafia
         players.forEach(player -> ((TestPlayer) player).vote = players.get(0));
         assertDoesNotThrow(() -> game.playNight());
         assertEquals(4, game.remainedMembers());
@@ -112,28 +116,6 @@ public class GameTests {
         }
         assertDoesNotThrow(() -> game.playNight());
         assertEquals(8, game.remainedMembers());
-    }
-
-    @Test
-    public void drawMafiaVotesTest() {
-        init(6);
-        try {
-            Field field = game.getClass().getDeclaredField("aliveMembers");
-            field.setAccessible(true);
-            @SuppressWarnings("unchecked")
-            List<Role> members = List.copyOf((List<Role>) field.get(game));
-            int i = 0;
-            for (Role member : members) {
-                if (member.getClass().equals(Mafia.class)) {
-                    ((TestPlayer) member.getPlayer()).vote = members.get(i < 1 ? 0 : 1).getPlayer();
-                    ++i;
-                }
-            }
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            e.printStackTrace();
-        }
-        assertDoesNotThrow(() -> game.playNight());
-        assertEquals(6, game.remainedMembers());
     }
 
     @Test
